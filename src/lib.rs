@@ -14,7 +14,7 @@
 //! You can explicitly create a `GapVec<T>` with `new`:
 //!
 //! ```
-//! let v: GapVec<i32> = Vec::new();
+//! let v: GapVec<i32> = GapVec::new();
 //! ```
 //!
 
@@ -32,7 +32,7 @@ use std::ops::Range;
 /// You can explicitly create a `GapVec<T>` with `new` :
 ///
 /// ```
-/// let v: GapVec<i32> = Vec::new();
+/// let v: GapVec<i32> = GapVec::new();
 /// ```
 ///
 
