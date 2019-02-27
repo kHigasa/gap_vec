@@ -3,5 +3,11 @@ name = "gap_vec"
 version = "0.1.0"
 authors = ["khigasa <kojihigasa@gmail.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/kHigasa/gap_vec"
+homepage = "https://github.com/kHigasa/gap_vec"
+readme = "README.md"
+description = "GapVec data structure in rust."
 
 [dependencies]
+
