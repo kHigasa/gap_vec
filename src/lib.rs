@@ -21,6 +21,10 @@
 #![feature(alloc, raw_vec_internals)]
 extern crate alloc;
 
+use core::marker::PhantomData;
+use core::ptr;
+use core::ptr::NonNull;
+
 use alloc::raw_vec::RawVec;
 use std::ops::Range;
 
@@ -53,7 +57,7 @@ impl<T> GapVec<T> {
     /// let mut gap_vec: GapVec<i32> = GapVec::new();
     /// ```
     #[inline]
-    pub fn new() -> GapVec<T> {
+    pub const fn new() -> GapVec<T> {
         GapVec {
             buf: RawVec::new(),
             gap: 0..0,
@@ -133,5 +137,22 @@ impl<T> GapVec<T> {
     pub fn position(&self) -> usize {
         self.gap.start
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Iterators
+////////////////////////////////////////////////////////////////////////////////
+
+/// An iterator that moves out of a gap vector.
+///
+/// This `struct` is created by the `into_iter` method on [`GapVec`][`GapVec`] (provided
+/// by the [`IntoIterator`] trait).
+
+pub struct IntoIter<'a, T: 'a> {
+    buf: NonNull<T>,
+    phantom: PhantomData<&'a T>,
+    cap: usize,
+    ptr: *const T,
+    end: *const T,
 }
 
