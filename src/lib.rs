@@ -18,12 +18,12 @@
 //! ```
 //!
 
-#![feature(alloc, raw_vec_internals)]
+#![feature(core_intrinsics, alloc, raw_vec_internals)]
 extern crate alloc;
 
-use core::marker::PhantomData;
-use core::ptr;
-use core::ptr::NonNull;
+use core::intrinsics::assume;
+use core::ops::{Deref, DerefMut};
+use core::slice;
 
 use alloc::raw_vec::RawVec;
 use std::ops::Range;
@@ -44,6 +44,10 @@ pub struct GapVec<T> {
     buf: RawVec<T>,
     gap: Range<usize>,
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Inherent methods
+////////////////////////////////////////////////////////////////////////////////
 
 impl<T> GapVec<T> {
     /// Constructs a new, empty `GapVec<T>`.
@@ -140,19 +144,32 @@ impl<T> GapVec<T> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Iterators
+// Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
 
-/// An iterator that moves out of a gap vector.
-///
-/// This `struct` is created by the `into_iter` method on [`GapVec`][`GapVec`] (provided
-/// by the [`IntoIterator`] trait).
+impl<T> Deref for GapVec<T> {
+    type Target = [T];
 
-pub struct IntoIter<'a, T: 'a> {
-    buf: NonNull<T>,
-    phantom: PhantomData<&'a T>,
-    cap: usize,
-    ptr: *const T,
-    end: *const T,
+    fn deref(&self) -> &[T] {
+        unsafe {
+            let ptr = self.buf.ptr();
+            assume(!ptr.is_null());
+            slice::from_raw_parts(ptr, self.len())
+        }
+    }
 }
+
+impl<T> DerefMut for GapVec<T> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        unsafe {
+            let ptr = self.buf.ptr();
+            assume(!ptr.is_null());
+            slice::from_raw_parts_mut(ptr, self.len())
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Iterators
+////////////////////////////////////////////////////////////////////////////////
 
