@@ -199,8 +199,10 @@ impl<T> GapVec<T> {
     /// ```
     /// use gap_vec::GapVec;
     ///
-    /// let mut gap_vec: GapVec<i32> = GapVec::new();
-    /// gap_vec.insert(3);
+    /// let mut gap_vec = GapVec::new();
+    /// gap_vec.insert("foo".to_string());
+    /// gap_vec.set_position(0);
+    /// assert_eq!(gap_vec.remove().unwrap(), "foo".to_string());
     /// ```
     pub fn insert(&mut self, element: T) {
         if self.gap.len() == 0 {
@@ -213,6 +215,26 @@ impl<T> GapVec<T> {
         }
 
         self.gap.start += 1;
+    }
+
+    /// Inserts the elements produced by `iter` at the current insertion
+    /// position, and leave the insertion position after them.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gap_vec::GapVec;
+    ///
+    /// let mut gap_vec: GapVec<char> = GapVec::new();
+    /// gap_vec.insert_iter("Foo bar baz qux quux.".chars());
+    /// assert_eq!(gap_vec.get_string(), "Foo bar baz qux quux.");
+    /// ```
+    pub fn insert_iter<I>(&mut self, iterable: I)
+        where I: IntoIterator<Item=T>
+    {
+        for item in iterable {
+            self.insert(item);
+        }
     }
 
     /// Removes and returns the element at gap end within the gap vector,
@@ -294,6 +316,14 @@ impl<T> GapVec<T> {
     }
 }
 
+impl GapVec<char> {
+    pub fn get_string(&self) -> String {
+        let mut text = String::new();
+        text.extend(self);
+        text
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
@@ -341,21 +371,33 @@ impl<T> Drop for GapVec<T> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Iterators
+// Iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-// Tests
-////////////////////////////////////////////////////////////////////////////////
+/// An iterator for `GapVec<T>`.
 
-#[cfg(test)]
-mod tests {
-    use super::GapVec;
+pub struct Iter<'a, T: 'a> {
+    buf: &'a GapVec<T>,
+    pos: usize
+}
 
-    #[test]
-    fn test_init() {
-        let gap_vec: GapVec<usize> = GapVec::with_capacity(100);
-        assert!(gap_vec.capacity() >= 100, "Gap vector is initialized to {} capacity.", gap_vec.capacity());
+impl<'a, T: 'a> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<&'a T> {
+        if self.pos >= self.buf.len() {
+            None
+        } else {
+            self.pos += 1;
+            self.buf.get(self.pos - 1)
+        }
+    }
+}
+
+impl<'a, T: 'a> IntoIterator for &'a GapVec<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+    fn into_iter(self) -> Iter<'a, T> {
+        Iter { buf: self, pos: 0 }
     }
 }
 
