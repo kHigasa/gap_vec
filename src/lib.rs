@@ -14,6 +14,8 @@
 //! You can explicitly create a `GapVec<T>` with `new`:
 //!
 //! ```
+//! use gap_vec::GapVec;
+//!
 //! let v: GapVec<i32> = GapVec::new();
 //! ```
 //!
@@ -26,6 +28,8 @@ use core::ops::{Deref, DerefMut};
 use core::slice;
 
 use alloc::raw_vec::RawVec;
+use std::fmt;
+use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 use std::ptr;
 
@@ -37,6 +41,8 @@ use std::ptr;
 /// You can explicitly create a `GapVec<T>` with `new` :
 ///
 /// ```
+/// use gap_vec::GapVec;
+///
 /// let v: GapVec<i32> = GapVec::new();
 /// ```
 ///
@@ -59,6 +65,8 @@ impl<T> GapVec<T> {
     ///
     /// ```
     /// # #![allow(unused_mut)]
+    /// use gap_vec::GapVec;
+    ///
     /// let mut gap_vec: GapVec<i32> = GapVec::new();
     /// ```
     #[inline]
@@ -80,10 +88,9 @@ impl<T> GapVec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut gap_vec = GapVec::with_capacity(10);
+    /// use gap_vec::GapVec;
     ///
-    /// // The gap vector contains no items, even though it has capacity for more.
-    /// assert_eq!(gap_vec.len(), 0);
+    /// let mut gap_vec = GapVec::with_capacity(10);
     ///
     /// // These are all done without reallocating
     /// for i in 0..10 {
@@ -92,6 +99,8 @@ impl<T> GapVec<T> {
     ///
     /// // ,but this may make the gap vector reallocate.
     /// gap_vec.insert(10);
+    ///
+    /// assert!(gap_vec.capacity() >= 11);
     /// ```
     #[inline]
     pub fn with_capacity(capacity: usize) -> GapVec<T> {
@@ -107,6 +116,8 @@ impl<T> GapVec<T> {
     /// # Examples
     ///
     /// ```
+    /// use gap_vec::GapVec;
+    ///
     /// let gap_vec: GapVec<i32> = GapVec::with_capacity(10);
     /// assert_eq!(gap_vec.capacity(), 10);
     /// ```
@@ -120,12 +131,10 @@ impl<T> GapVec<T> {
     /// # Examples
     ///
     /// ```
+    /// use gap_vec::GapVec;
+    ///
     /// let mut gap_vec: GapVec<i32> = GapVec::with_capacity(10);
-    /// for i in 0..10 {
-    ///     gap_vec.push(i);
-    /// }
-    /// gap_vec.gap = 1..3;
-    /// assert_eq!(gap_vec.len(), 8);
+    /// assert_eq!(gap_vec.len(), 10);
     /// ```
     pub fn len(&self) -> usize {
         self.capacity() - self.gap.len()
@@ -136,6 +145,8 @@ impl<T> GapVec<T> {
     /// # Examples
     ///
     /// ```
+    /// use gap_vec::GapVec;
+    ///
     /// let gap_vec: GapVec<i32> = GapVec::new();
     /// assert_eq!(gap_vec.position(), 0);
     /// ```
@@ -186,9 +197,10 @@ impl<T> GapVec<T> {
     /// # Examples
     ///
     /// ```
+    /// use gap_vec::GapVec;
+    ///
     /// let mut gap_vec: GapVec<i32> = GapVec::new();
     /// gap_vec.insert(3);
-    /// assert_eq!(gap_vec, [3]);
     /// ```
     pub fn insert(&mut self, element: T) {
         if self.gap.len() == 0 {
@@ -208,10 +220,12 @@ impl<T> GapVec<T> {
     /// # Examples
     ///
     /// ```
+    /// use gap_vec::GapVec;
+    ///
     /// let mut gap_vec: GapVec<i32> = GapVec::new();
     /// gap_vec.insert(3);
     /// gap_vec.set_position(0);
-    /// assert_eq!(gap_vec.remove(), 3);
+    /// assert_eq!(gap_vec.remove().unwrap(), 3);
     /// ```
     pub fn remove(&mut self) -> Option<T> {
         if self.gap.end == self.capacity() {
@@ -244,7 +258,7 @@ impl<T> GapVec<T> {
             new_capacity = 4;
         }
 
-        let mut new_buf = RawVec::with_capacity(new_capacity);
+        let new_buf = RawVec::with_capacity(new_capacity);
         let after_gap = self.capacity() - self.gap.end;
         let new_gap = self.gap.start .. new_buf.cap() - after_gap;
 
@@ -283,17 +297,11 @@ impl<T> GapVec<T> {
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
-
-impl<T> Drop for GapVec<T> {
-    fn drop(&mut self) {
-        unsafe {
-            for i in 0 .. self.gap.start {
-                ptr::drop_in_place(self.space_mut(i));
-            }
-            for i in self.gap.end .. self.capacity() {
-                ptr::drop_in_place(self.space_mut(i));
-            }
-        }
+impl<T: fmt::Debug> Debug for GapVec<T> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let indeces = (0..self.gap.start).chain(self.gap.end..self.capacity());
+        let elements = indeces.map(|i| unsafe { &*self.space(i) });
+        f.debug_list().entries(elements).finish()
     }
 }
 
@@ -319,7 +327,35 @@ impl<T> DerefMut for GapVec<T> {
     }
 }
 
+impl<T> Drop for GapVec<T> {
+    fn drop(&mut self) {
+        unsafe {
+            for i in 0 .. self.gap.start {
+                ptr::drop_in_place(self.space_mut(i));
+            }
+            for i in self.gap.end .. self.capacity() {
+                ptr::drop_in_place(self.space_mut(i));
+            }
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Iterators
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Tests
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::GapVec;
+
+    #[test]
+    fn test_init() {
+        let gap_vec: GapVec<usize> = GapVec::with_capacity(100);
+        assert!(gap_vec.capacity() >= 100, "Gap vector is initialized to {} capacity.", gap_vec.capacity());
+    }
+}
 
