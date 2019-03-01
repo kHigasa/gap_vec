@@ -16,9 +16,30 @@
 //! ```
 //! use gap_vec::GapVec;
 //!
-//! let v: GapVec<i32> = GapVec::new();
+//! let mut gap_vec: GapVec<i32> = GapVec::new();
 //! ```
 //!
+//! You can `insert` values (which will grow the gap vector as needed):
+//!
+//! ```
+//! use gap_vec::GapVec;
+//!
+//! let mut gap_vec = GapVec::new();
+//!
+//! gap_vec.insert("onion".to_string());
+//! ```
+//!
+//! You can `remove` values in much the same way:
+//!
+//! ```
+//! use gap_vec::GapVec;
+//!
+//! let mut gap_vec = GapVec::new();
+//!
+//! gap_vec.insert("foo".to_string());
+//! gap_vec.set_position(0);
+//! assert_eq!(gap_vec.remove().unwrap(), "foo".to_string());
+//! ```
 
 #![feature(core_intrinsics, alloc, raw_vec_internals)]
 extern crate alloc;
